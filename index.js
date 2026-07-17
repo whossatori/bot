@@ -1,0 +1,220 @@
+import { ChatClient } from 'dank-twitch-irc';
+import sqlite3 from 'sqlite3';
+import path from 'path';
+import fs from 'fs';
+import url from 'url';
+import { loadCommands } from './utils/commandLoader.js';
+import { isOnCooldown, setCooldown } from './utils/cooldown.js';
+
+const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
+const config = JSON.parse(fs.readFileSync(path.join(__dirname, 'config.json'), 'utf-8'));
+
+// Ensure logs directory exists
+const logsDir = path.join(__dirname, 'logs');
+if (!fs.existsSync(logsDir)) {
+  fs.mkdirSync(logsDir, { recursive: true });
+}
+
+// ─── Database Setup ───────────────────────────────────────────────
+const dbPath = path.join(__dirname, config.database || './database/bot.db');
+const dbDir = path.dirname(dbPath);
+if (!fs.existsSync(dbDir)) {
+  fs.mkdirSync(dbDir, { recursive: true });
+}
+const db = new sqlite3.Database(dbPath);
+
+// ─── Bot State ────────────────────────────────────────────────────
+const startTime = Date.now();
+let commandsUsed = 0;
+const activeChannels = new Set();
+
+db.serialize(() => {
+  db.run(`CREATE TABLE IF NOT EXISTS channels (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    channel TEXT UNIQUE NOT NULL
+  )`);
+
+  db.run(`CREATE TABLE IF NOT EXISTS stats (
+    key TEXT PRIMARY KEY,
+    value INTEGER DEFAULT 0
+  )`);
+
+  db.run(`CREATE TABLE IF NOT EXISTS stars (
+    user_id TEXT PRIMARY KEY,
+    username TEXT,
+    stars INTEGER NOT NULL DEFAULT 0
+  )`);
+
+  db.run(
+    `INSERT OR IGNORE INTO stats (key, value) VALUES ('commands_used', 0)`
+  );
+
+  db.get(
+    `SELECT value FROM stats WHERE key = 'commands_used'`,
+    (err, row) => {
+      if (!err && row) {
+        commandsUsed = row.value;
+        console.log(`Loaded commands_used: ${commandsUsed}`);
+      }
+    }
+  );
+});
+
+// ─── Load Commands ────────────────────────────────────────────────
+const commands = await loadCommands(path.join(__dirname, 'commands'));
+
+// ─── Create Twitch Client ────────────────────────────────────────
+const client = new ChatClient({
+  username: config.username,
+  password: config.oauth,
+});
+
+// ─── Channel Management ───────────────────────────────────────────
+async function joinChannel(channel) {
+  const ch = channel.toLowerCase().replace('#', '').trim();
+  if (!ch) return false;
+  if (activeChannels.has(ch)) {
+    console.log(`Already in channel: ${ch}`);
+    return true;
+  }
+  try {
+    await client.join(ch);
+    activeChannels.add(ch);
+    db.run(`INSERT OR IGNORE INTO channels (channel) VALUES (?)`, [ch]);
+    console.log(`Joined channel: ${ch}`);
+    return true;
+  } catch (err) {
+    console.error(`Failed to join ${ch}:`, err.message);
+    return false;
+  }
+}
+
+async function leaveChannel(channel) {
+  const ch = channel.toLowerCase().replace('#', '').trim();
+  if (!ch) return false;
+  try {
+    await client.part(ch);
+    activeChannels.delete(ch);
+    db.run(`DELETE FROM channels WHERE channel = ?`, [ch]);
+    console.log(`Left channel: ${ch}`);
+    return true;
+  } catch (err) {
+    console.error(`Failed to leave ${ch}:`, err.message);
+    return false;
+  }
+}
+
+// ─── Bot State Object (shared with commands) ─────────────────────
+const botState = {
+  db,
+  config,
+  client,
+  commands,
+  startTime,
+  joinChannel,
+  leaveChannel,
+  getCommandsUsed: () => commandsUsed,
+  getActiveChannelCount: () => activeChannels.size,
+  getActiveChannels: () => activeChannels,
+};
+
+// ─── Message Handler ─────────────────────────────────────────────
+client.on('PRIVMSG', async (msg) => {
+  const text = msg.messageText;
+  if (!text.startsWith(config.prefix)) return;
+
+  const args = text.slice(config.prefix.length).trim().split(/\s+/);
+  const cmdName = args.shift().toLowerCase();
+
+  const command = commands.get(cmdName);
+  if (!command) return;
+
+  if (
+    command.adminOnly &&
+    msg.senderUsername.toLowerCase() !== config.admin.toLowerCase()
+  ) {
+    return;
+  }
+
+  if (isOnCooldown(cmdName, msg.senderUsername)) {
+    return;
+  }
+  setCooldown(cmdName, msg.senderUsername);
+
+  commandsUsed++;
+  db.run(
+    `UPDATE stats SET value = value + 1 WHERE key = 'commands_used'`
+  );
+
+  try {
+    await command.execute({
+      msg,
+      channelName: msg.channelName,
+      senderUsername: msg.senderUsername,
+      args,
+      botState,
+    });
+  } catch (err) {
+    console.error(`Error executing command "${cmdName}":`, err);
+  }
+});
+
+// ─── Client Events ───────────────────────────────────────────────
+client.on('ready', () => {
+  console.log(`✅ Bot connected as: ${config.username}`);
+  console.log(`📢 Prefix: ${config.prefix}`);
+  console.log(`👑 Admin: ${config.admin}`);
+  console.log(`📦 Commands loaded: ${commands.size}`);
+
+  console.log('--- Joining config channels ---');
+  for (const ch of config.channels) {
+    joinChannel(ch);
+  }
+
+  db.all(`SELECT channel FROM channels`, (err, rows) => {
+    if (err) {
+      console.error('Error loading channels from database:', err);
+      return;
+    }
+    console.log('--- Joining database channels ---');
+    for (const row of rows) {
+      if (
+        !config.channels
+          .map((c) => c.toLowerCase().replace('#', ''))
+          .includes(row.channel)
+      ) {
+        joinChannel(row.channel);
+      }
+    }
+  });
+});
+
+client.on('error', (err) => {
+  console.error('Client error:', err);
+});
+
+client.on('close', () => {
+  console.log('⚠️ Connection closed');
+});
+
+process.on('SIGINT', () => {
+  console.log('\n🛑 Shutting down bot...');
+  db.close((err) => {
+    if (err) console.error('Error closing database:', err);
+    process.exit(0);
+  });
+});
+
+process.on('SIGTERM', () => {
+  console.log('\n🛑 Received SIGTERM, shutting down...');
+  db.close((err) => {
+    if (err) console.error('Error closing database:', err);
+    process.exit(0);
+  });
+});
+
+console.log(' Connecting to Twitch IRC...');
+client.connect().catch((err) => {
+  console.error(' Failed to connect:', err);
+  process.exit(1);
+});

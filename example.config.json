@@ -1,0 +1,9 @@
+{
+  "username": "bot name",
+  "oauth": "oauth:your_oauth_token",
+  "clientId": "your_client_id",
+  "prefix": "!",
+  "admin": "admin_username",
+  "channels": ["channel_name"],
+  "database": "./database/bot.db"
+}

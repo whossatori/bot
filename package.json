@@ -1,0 +1,18 @@
+{
+  "name": "twitch-bot",
+  "version": "1.0.0",
+  "description": "A Twitch chat bot using dank-twitch-irc",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "pm2 start ecosystem.config.cjs",
+    "stop": "pm2 stop twitch-bot",
+    "restart": "pm2 restart twitch-bot",
+    "logs": "pm2 logs twitch-bot",
+    "delete": "pm2 delete twitch-bot"
+  },
+  "dependencies": {
+    "dank-twitch-irc": "npm:@mastondzn/dank-twitch-irc@^8.0.0",
+    "sqlite3": "^5.1.6"
+  }
+}
