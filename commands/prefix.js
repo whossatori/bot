@@ -32,7 +32,7 @@ export default {
 
     await botState.client.me(
       channelName,
-      `✅ Prefix changed from ${oldPrefix} to ${newPrefix}`
+      `ok changed to ${newPrefix}`
     );
   },
 };
