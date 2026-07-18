@@ -166,10 +166,10 @@ client.on('PRIVMSG', async (msg) => {
     return;
   }
 
-  if (isOnCooldown(cmdName, msg.senderUsername)) {
+  if (isOnCooldown(command.name, msg.senderUsername)) {
     return;
   }
-  setCooldown(cmdName, msg.senderUsername);
+  setCooldown(command.name, msg.senderUsername);
 
   commandsUsed++;
   db.run(

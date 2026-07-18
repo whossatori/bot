@@ -23,8 +23,25 @@ async function loadCommands(commandsDir) {
       const command = imported.default || imported;
 
       if (command.name && typeof command.execute === 'function') {
-        commands.set(command.name.toLowerCase(), command);
-        console.log(`  ↳ Loaded command: ${command.name}`);
+        const key = command.name.toLowerCase();
+        if (commands.has(key)) {
+          console.warn(`  ↳ Warning: "${key}" is already registered, overwriting`);
+        }
+        commands.set(key, command);
+
+        let aliasLog = '';
+        if (Array.isArray(command.aliases) && command.aliases.length > 0) {
+          for (const alias of command.aliases) {
+            const aliasKey = alias.toLowerCase();
+            if (commands.has(aliasKey)) {
+              console.warn(`  ↳ Warning: alias "${aliasKey}" is already registered, overwriting`);
+            }
+            commands.set(aliasKey, command);
+          }
+          aliasLog = ` (aliases: ${command.aliases.join(', ')})`;
+        }
+
+        console.log(`  ↳ Loaded command: ${command.name}${aliasLog}`);
       } else {
         console.warn(
           `  ↳ Skipped ${file}: missing "name" or "execute" property`

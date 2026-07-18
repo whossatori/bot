@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "dank-twitch-irc": "npm:@mastondzn/dank-twitch-irc@^8.0.0",
+    "humanize-duration": "^3.34.0",
     "sqlite3": "^5.1.6"
   }
 }
