@@ -26,6 +26,8 @@ const db = new sqlite3.Database(dbPath);
 // ─── Bot State ────────────────────────────────────────────────────
 const startTime = Date.now();
 let commandsUsed = 0;
+const DEFAULT_PREFIX = '^'; // only used if no prefix is stored in the database yet
+let currentPrefix = DEFAULT_PREFIX;
 const activeChannels = new Set();
 
 db.serialize(() => {
@@ -45,6 +47,11 @@ db.serialize(() => {
     stars INTEGER NOT NULL DEFAULT 0
   )`);
 
+  db.run(`CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT
+  )`);
+
   db.run(
     `INSERT OR IGNORE INTO stats (key, value) VALUES ('commands_used', 0)`
   );
@@ -55,6 +62,25 @@ db.serialize(() => {
       if (!err && row) {
         commandsUsed = row.value;
         console.log(`Loaded commands_used: ${commandsUsed}`);
+      }
+    }
+  );
+
+  // Seeds 'prefix' with DEFAULT_PREFIX only the first time this table is
+  // ever populated (INSERT OR IGNORE no-ops if the row already exists),
+  // then reads back whatever is actually stored — so a prefix set via the
+  // ^prefix command survives restarts.
+  db.run(
+    `INSERT OR IGNORE INTO settings (key, value) VALUES ('prefix', ?)`,
+    [DEFAULT_PREFIX]
+  );
+
+  db.get(
+    `SELECT value FROM settings WHERE key = 'prefix'`,
+    (err, row) => {
+      if (!err && row) {
+        currentPrefix = row.value;
+        console.log(`Loaded prefix: ${currentPrefix}`);
       }
     }
   );
@@ -116,14 +142,18 @@ const botState = {
   getCommandsUsed: () => commandsUsed,
   getActiveChannelCount: () => activeChannels.size,
   getActiveChannels: () => activeChannels,
+  getPrefix: () => currentPrefix,
+  setPrefix: (newPrefix) => {
+    currentPrefix = newPrefix;
+  },
 };
 
 // ─── Message Handler ─────────────────────────────────────────────
 client.on('PRIVMSG', async (msg) => {
   const text = msg.messageText;
-  if (!text.startsWith(config.prefix)) return;
+  if (!text.startsWith(currentPrefix)) return;
 
-  const args = text.slice(config.prefix.length).trim().split(/\s+/);
+  const args = text.slice(currentPrefix.length).trim().split(/\s+/);
   const cmdName = args.shift().toLowerCase();
 
   const command = commands.get(cmdName);
@@ -162,7 +192,7 @@ client.on('PRIVMSG', async (msg) => {
 // ─── Client Events ───────────────────────────────────────────────
 client.on('ready', () => {
   console.log(`✅ Bot connected as: ${config.username}`);
-  console.log(`📢 Prefix: ${config.prefix}`);
+  console.log(`📢 Prefix: ${currentPrefix}`);
   console.log(`👑 Admin: ${config.admin}`);
   console.log(`📦 Commands loaded: ${commands.size}`);
 

@@ -22,7 +22,8 @@ export default {
   adminOnly: false,
 
   async execute({ channelName, botState }) {
-    const { config, startTime } = botState;
+    const { startTime } = botState;
+    const prefix = botState.getPrefix();
 
     // Round-trip latency to Twitch's IRC server: sends a raw PING and times
     // how long it takes to get the matching PONG back (2s timeout, handled
@@ -51,7 +52,7 @@ export default {
       ` ♡ uptime: ${uptime}` +
       ` ♡ channels: ${channelCount}` +
       ` ♡ cmds used: ${cmdsUsed}` +
-      ` ♡ prefix: ${config.prefix}`;
+      ` ♡ prefix: ${prefix}`;
 
     await botState.client.me(channelName, response);
   },

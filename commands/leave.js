@@ -7,7 +7,7 @@ export default {
     if (!args[0]) {
       await botState.client.me(
         channelName,
-        `Usage: ${botState.config.prefix}leave <channel>`
+        `Usage: ${botState.getPrefix()}leave <channel>`
       );
       return;
     }
