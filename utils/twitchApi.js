@@ -25,18 +25,21 @@ async function getAppAccessToken(config) {
     );
   }
 
-  const params = new URLSearchParams({
-    client_id: config.clientId,
-    client_secret: config.clientSecret,
-    grant_type: 'client_credentials',
-  });
-
-  const res = await fetch(`https://id.twitch.tv/oauth2/token?${params}`, {
+  const res = await fetch('https://id.twitch.tv/oauth2/token', {
     method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: new URLSearchParams({
+      client_id: config.clientId,
+      client_secret: config.clientSecret,
+      grant_type: 'client_credentials',
+    }),
   });
 
   if (!res.ok) {
-    throw new Error(`Failed to get Twitch app access token: ${res.status}`);
+    const detail = await res.text().catch(() => '');
+    throw new Error(`Failed to get Twitch app access token: ${res.status} ${detail}`);
   }
 
   const data = await res.json();
@@ -63,7 +66,8 @@ async function helixGet(config, endpoint, searchParams, retrying = false) {
   }
 
   if (!res.ok) {
-    throw new Error(`Helix request to "${endpoint}" failed: ${res.status}`);
+    const detail = await res.text().catch(() => '');
+    throw new Error(`Helix request to "${endpoint}" failed: ${res.status} ${detail}`);
   }
 
   return res.json();
