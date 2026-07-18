@@ -44,7 +44,7 @@ export default {
       );
     });
 
-    const response = `@${senderUsername} caught a  ☆ u have ${total} stars STAR`; // customize me
+    const response = `@${senderUsername} caught a  ☆ u have ${total} stars ꕥ`; // customize me
     await botState.client.me(channelName, response);
   },
 };
