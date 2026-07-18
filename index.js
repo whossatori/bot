@@ -95,6 +95,32 @@ const client = new ChatClient({
   password: config.oauth,
 });
 
+// Twitch's IRC server rejects a message outright if it's identical to
+// the last one sent in that channel within ~30s (msg_duplicate), and
+// dank-twitch-irc surfaces that as a rejected promise. Without this,
+// that throws out of whichever command triggered it — and since it's
+// about IRC-level message content, not command logic, ANY command
+// could hit it. Wrapping here (rather than in each command) covers
+// every current and future command that calls botState.client.me/say.
+const rawMe = client.me.bind(client);
+const rawSay = client.say.bind(client);
+
+client.me = async (channelName, message) => {
+  try {
+    await rawMe(channelName, message);
+  } catch (err) {
+    console.error(`Failed to send message to #${channelName}:`, err.message);
+  }
+};
+
+client.say = async (channelName, message) => {
+  try {
+    await rawSay(channelName, message);
+  } catch (err) {
+    console.error(`Failed to send message to #${channelName}:`, err.message);
+  }
+};
+
 // ─── Channel Management ───────────────────────────────────────────
 async function joinChannel(channel) {
   const ch = channel.toLowerCase().replace('#', '').trim();
