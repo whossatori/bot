@@ -16,12 +16,12 @@ export default {
       user = await getUserByLogin(config, targetLogin);
     } catch (err) {
       console.error('up: failed to resolve user:', err.message);
-      await botState.client.me(channelName, `❌ Couldn't reach Twitch's API right now.`);
+      await botState.client.me(channelName, `✘ cant reach twitch`);
       return;
     }
 
     if (!user) {
-      await botState.client.me(channelName, `❌ No Twitch channel called "${targetLogin}".`);
+      await botState.client.me(channelName, `✘ no channel called "${targetLogin}".`);
       return;
     }
 
@@ -30,7 +30,7 @@ export default {
       stream = await getStreamByUserId(config, user.id);
     } catch (err) {
       console.error('up: failed to fetch stream data:', err.message);
-      await botState.client.me(channelName, `❌ Couldn't reach Twitch's API right now.`);
+      await botState.client.me(channelName, `✘ Couldn't reach Twitch's API right now.`);
       return;
     }
 
@@ -38,13 +38,11 @@ export default {
       const duration = formatDuration(Date.now() - new Date(stream.started_at).getTime());
       await botState.client.me(
         channelName,
-        `${user.display_name} has been live for ${duration}`
+        `${user.display_name} has been live for ${duration} ♡`
       );
       return;
     }
 
-    // Offline — Helix has nothing further to say here, so this leans on
-    // IVR's lastBroadcast data instead (see twitchApi.js).
     let ivrUser;
     try {
       ivrUser = await getIvrUser(user.id);
@@ -57,11 +55,10 @@ export default {
 
     if (!lastBroadcast?.startedAt) {
       const status = ivrUser?.banned ? 'unavailable' : 'offline';
-      const response = ivrUser?.banned
-        ? `${user.display_name} is ${status} — never streamed before.`
-        : `${user.display_name} is ${status} — never streamed before (or Twitch isn't showing the date). Check https://www.twitch.tv/${targetLogin}/schedule`;
-
-      await botState.client.me(channelName, response);
+      await botState.client.me(
+        channelName,
+        `${user.display_name} is ${status} ꕥ never streamed before. ♡`
+      );
       return;
     }
 
@@ -72,7 +69,7 @@ export default {
 
     await botState.client.me(
       channelName,
-      `${user.display_name} has been offline for ${duration}`
+      `${user.display_name} has been offline for ${duration} ♡`
     );
   },
 };
