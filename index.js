@@ -3,7 +3,7 @@ import sqlite3 from 'sqlite3';
 import path from 'path';
 import fs from 'fs';
 import url from 'url';
-import { loadCommands } from './utils/commandLoader.js';
+import { loadCommands, countUniqueCommands } from './utils/commandLoader.js';
 import { isOnCooldown, setCooldown } from './utils/cooldown.js';
 
 const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
@@ -220,7 +220,7 @@ client.on('ready', () => {
   console.log(`✅ Bot connected as: ${config.username}`);
   console.log(`📢 Prefix: ${currentPrefix}`);
   console.log(`👑 Admin: ${config.admin}`);
-  console.log(`📦 Commands loaded: ${commands.size}`);
+  console.log(`📦 Commands loaded: ${countUniqueCommands(commands)}`);
 
   console.log('--- Joining config channels ---');
   for (const ch of config.channels) {

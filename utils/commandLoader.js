@@ -52,8 +52,15 @@ async function loadCommands(commandsDir) {
     }
   }
 
-  console.log(`📦 Loaded ${commands.size} command(s) from ${commandsDir}`);
+  console.log(`📦 Loaded ${countUniqueCommands(commands)} command(s) from ${commandsDir}`);
   return commands;
 }
 
-export { loadCommands };
+// A command's name and all its aliases share one Map key each but point
+// to the SAME command object — commands.size alone counts every alias
+// as if it were its own command. This counts each loaded command once.
+function countUniqueCommands(commands) {
+  return new Set(commands.values()).size;
+}
+
+export { loadCommands, countUniqueCommands };
