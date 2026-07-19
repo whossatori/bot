@@ -14,7 +14,7 @@ export default {
   adminOnly: false,
 
   async execute({ channelName, senderUsername, msg, botState }) {
-    const caught = Math.random() < 0.25;
+    const caught = Math.random() < 0.40;
 
     if (!caught) {
       const missText = MISS_MESSAGES[Math.floor(Math.random() * MISS_MESSAGES.length)];
