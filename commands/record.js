@@ -12,7 +12,7 @@ export default {
 
     if (!config.valorantRiotId || !config.valorantRiotId.includes('#')) {
       console.error('record: valorantRiotId is missing or malformed in config.json (expected "name#tag")');
-      await botState.client.me(channelName, `✘ Valorant account isn't configured.`);
+      await botState.client.me(channelName, `✘ valo acc not added.`);
       return;
     }
     const [riotName, riotTag] = config.valorantRiotId.split('#');
@@ -25,12 +25,12 @@ export default {
       stream = twitchUser ? await getStreamByUserId(config, twitchUser.id) : null;
     } catch (err) {
       console.error('record: failed to check stream status:', err.message);
-      await botState.client.me(channelName, `✘ Couldn't reach Twitch's API right now.`);
+      await botState.client.me(channelName, `✘ cant reach twitch api.`);
       return;
     }
 
     if (!stream) {
-      await botState.client.me(channelName, `✘ Not live right now.`);
+      await botState.client.me(channelName, `✘ not live.`);
       return;
     }
 
@@ -45,7 +45,7 @@ export default {
       ]);
     } catch (err) {
       console.error('record: failed to fetch Valorant data:', err.message);
-      await botState.client.me(channelName, `✘ Couldn't reach the Valorant API right now.`);
+      await botState.client.me(channelName, `✘ cant reach valo api.`);
       return;
     }
 
