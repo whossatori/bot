@@ -70,6 +70,12 @@ export default {
     // (the pull already succeeded by this point). No artificial delay
     // needed before this — the awaited status message above only
     // resolves once it's actually been sent.
+    if (!botState.config.pm2ProcessName) {
+      await botState.client.me(channelName, `pulled, but pm2ProcessName isn't set in config.json — can't restart`);
+      console.error('pull: config.pm2ProcessName is not set');
+      return;
+    }
+
     try {
       // botState.config.pm2ProcessName must match the name `pm2 list`
       // shows for this bot's process.
