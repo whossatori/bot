@@ -20,7 +20,7 @@ export default {
       const count = row ? row.stars : 0;
       const response =
         count > 0
-          ? `@${senderUsername} you have ${count} ☆ star${count === 1 ? '' : 's'}.` // customize me
+          ? `@${senderUsername} you have ${count} star${count === 1 ? '' : 's'} ☆` // customize me
           : `@${senderUsername} you haven't caught any stars yet ♡`; // customize me
 
       await botState.client.me(channelName, response);
@@ -41,7 +41,7 @@ export default {
     const count = row ? row.stars : 0;
     const response =
       count > 0
-        ? `${displayName} has ${count} ☆ star${count === 1 ? '' : 's'}.` // customize me
+        ? `${displayName} has ${count} star${count === 1 ? '' : 's'} ☆` // customize me
         : `${displayName} hasn't caught any stars yet ♡`; // customize me
 
     await botState.client.me(channelName, response);
