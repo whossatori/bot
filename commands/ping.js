@@ -32,7 +32,7 @@ export default {
     const cmdsUsed = botState.getCommandsUsed();
 
     const response =
-      `test🏓 latency: ${latency}` +
+      `🏓 latency: ${latency}` +
       ` ♡ RAM usage: ${ramMB}MB` +
       ` ♡ uptime: ${uptime}` +
       ` ♡ channels: ${channelCount}` +
