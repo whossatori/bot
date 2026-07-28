@@ -3,7 +3,7 @@
 // centrally in index.js's message handler, so every command (existing
 // and future) is covered automatically — no per-command wiring needed.
 
-const COOLDOWN_MS = 5000;
+const COOLDOWN_MS = 1000;
 
 const cooldowns = new Map(); // key: "command:username" -> timestamp of last use
 
