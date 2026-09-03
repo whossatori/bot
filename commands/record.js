@@ -1,6 +1,10 @@
 import { getUserByLogin, getStreamByUserId } from '../utils/twitchApi.js';
 import { getAccount, getCurrentMmr, getMmrHistory } from '../utils/valorantApi.js';
 
+// Same flourish valo.satos.cc's /valo/ranked uses by default, so the
+// chat output matches the overlay text byte-for-byte.
+const DEFAULT_FLOURISH = 'ʢᴗ.ᴗʡᶻ';
+
 export default {
   name: 'record',
   aliases: ['rec'],
@@ -18,19 +22,26 @@ export default {
     const [riotName, riotTag] = config.valorantRiotId.split('#');
 
     // The match-history window is "since the stream went live", so this
-    // needs the stream's actual start time first.
-    let stream;
+    // needs the stream's live status (and the Twitch user, for its
+    // display name) before asking Henrik for anything.
+    let twitchUser, stream;
     try {
-      const twitchUser = await getUserByLogin(config, channelName);
+      twitchUser = await getUserByLogin(config, channelName);
       stream = twitchUser ? await getStreamByUserId(config, twitchUser.id) : null;
     } catch (err) {
       console.error('record: failed to check stream status:', err.message);
-      await botState.client.me(channelName, `✘ cant reach twitch api.`);
+      await botState.client.me(channelName, `Couldn't reach Twitch or the Valorant API right now.`);
+      return;
+    }
+
+    if (!twitchUser) {
+      console.error(`record: no Twitch user found for channel "${channelName}"`);
+      await botState.client.me(channelName, `Couldn't reach Twitch or the Valorant API right now.`);
       return;
     }
 
     if (!stream) {
-      await botState.client.me(channelName, `✘ not live.`);
+      await botState.client.me(channelName, `${twitchUser.display_name} is offline`);
       return;
     }
 
@@ -39,25 +50,27 @@ export default {
     let account, history, current;
     try {
       account = await getAccount(config, riotName, riotTag);
+      if (!account) {
+        await botState.client.me(channelName, `No Valorant account found for ${riotName}#${riotTag}`);
+        return;
+      }
+
       [history, current] = await Promise.all([
         getMmrHistory(config, account.region, 'pc', account.puuid),
         getCurrentMmr(config, account.region, 'pc', account.puuid),
       ]);
+
+      if (!history || !current) {
+        await botState.client.me(channelName, `No Valorant account found for ${riotName}#${riotTag}`);
+        return;
+      }
     } catch (err) {
       console.error('record: failed to fetch Valorant data:', err.message);
-      await botState.client.me(channelName, `✘ cant reach valo api.`);
+      await botState.client.me(channelName, `Couldn't reach Twitch or the Valorant API right now.`);
       return;
     }
 
     const sessionMatches = history.filter((m) => new Date(m.date).getTime() >= streamStart);
-
-    if (sessionMatches.length === 0) {
-      await botState.client.me(
-        channelName,
-        `${account.name} hasn't played a competitive match yet this stream. Currently: ${current.tier.name} ${current.rr}RR`
-      );
-      return;
-    }
 
     // Inferred from RR change per match: gained RR = win, lost RR = loss.
     // A match with exactly 0 change (e.g. a fully derank-protected loss)
@@ -65,14 +78,14 @@ export default {
     const wins = sessionMatches.filter((m) => m.last_change > 0).length;
     const losses = sessionMatches.filter((m) => m.last_change < 0).length;
     const netRr = sessionMatches.reduce((sum, m) => sum + m.last_change, 0);
-
-    let rrLine;
-    if (netRr > 0) rrLine = `is up ${netRr}RR`;
-    else if (netRr < 0) rrLine = `is down ${Math.abs(netRr)}RR`;
-    else rrLine = `is even`;
+    const winRate = wins + losses > 0 ? ((wins / (wins + losses)) * 100).toFixed(2) : '0.00';
+    const direction = netRr > 0 ? 'up' : netRr < 0 ? 'down' : 'even';
+    const signedRr = netRr > 0 ? `+${netRr}` : `${netRr}`;
 
     const response =
-      `${account.name} is down ${rrLine} ( ${wins}W ♡ ${losses}L ) Currently: ${current.tier.name} ${current.rr}RR ꕥ`;
+      `${twitchUser.display_name} is ${direction} ${signedRr}RR  ` +
+      `${wins}W - ${losses}L, ${winRate}% wr ` +
+      `currently: ${current.tier.name} ${current.rr}RR  ${DEFAULT_FLOURISH}`;
 
     await botState.client.me(channelName, response);
   },
