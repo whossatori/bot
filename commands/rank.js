@@ -40,7 +40,7 @@ export default {
       return;
     }
 
-    const response = `${channelName} is currently ${current.tier.name} ${current.rr}RR ${DEFAULT_RANK_FLOURISH}`;
+    const response = `${channelName} is ${current.tier.name} ${current.rr}RR ${DEFAULT_RANK_FLOURISH}`;
 
     await botState.client.me(channelName, response);
   },
