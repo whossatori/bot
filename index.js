@@ -5,6 +5,7 @@ import fs from 'fs';
 import url from 'url';
 import { loadCommands, countUniqueCommands } from './utils/commandLoader.js';
 import { isOnCooldown, setCooldown } from './utils/cooldown.js';
+import { handleTriggers } from './utils/triggers.js';
 
 const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
 const config = JSON.parse(fs.readFileSync(path.join(__dirname, 'config.json'), 'utf-8'));
@@ -177,6 +178,15 @@ const botState = {
 // ─── Message Handler ─────────────────────────────────────────────
 client.on('PRIVMSG', async (msg) => {
   const text = msg.messageText;
+
+  // Prefix-less keyword triggers (nt/ns/lol, etc.) — checked on every
+  // message regardless of prefix, since they're not invoked as commands.
+  try {
+    await handleTriggers({ text, channelName: msg.channelName, botState });
+  } catch (err) {
+    console.error('Error handling keyword triggers:', err);
+  }
+
   if (!text.startsWith(currentPrefix)) return;
 
   const args = text.slice(currentPrefix.length).trim().split(/\s+/);
