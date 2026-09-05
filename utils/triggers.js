@@ -25,11 +25,6 @@ const TRIGGERS = [
     regex: /\bns\b/i,
     response: (count) => `yay x${count}`, // customize me
   },
-  {
-    key: 'lol',
-    regex: /\blol\b/i,
-    response: (count) => `LOL x${count}`, // customize me
-  },
 ];
 
 const lastTriggered = new Map(); // trigger key -> timestamp of last fire
@@ -47,7 +42,7 @@ function isOnCooldown(key) {
 
 // Checks `text` against every trigger, firing (and counting) any whole
 // match that isn't on cooldown. Multiple triggers can fire off a
-// single message (e.g. "lol nt") — each is independent.
+// single message (e.g. "nt ns") — each is independent.
 async function handleTriggers({ text, channelName, botState }) {
   for (const trigger of TRIGGERS) {
     if (!trigger.regex.test(text)) continue;
