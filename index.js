@@ -177,6 +177,12 @@ const botState = {
 
 // ─── Message Handler ─────────────────────────────────────────────
 client.on('PRIVMSG', async (msg) => {
+  // dank-twitch-irc's echo-message capability means the bot receives its
+  // own PRIVMSGs back just like anyone else's — without this check, a
+  // canned response containing a trigger word (e.g. star.js's "lol..."
+  // miss message) would set off that trigger on itself.
+  if (msg.senderUsername.toLowerCase() === config.username.toLowerCase()) return;
+
   const text = msg.messageText;
 
   // Prefix-less keyword triggers (nt/ns/lol, etc.) — checked on every
