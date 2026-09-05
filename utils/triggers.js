@@ -18,17 +18,17 @@ const TRIGGERS = [
   {
     key: 'nt',
     regex: /\bnt\b/i,
-    response: (count) => `nt happens to the best of us #${count}`, // customize me
+    response: (count) => `cheating x${count}`, // customize me
   },
   {
     key: 'ns',
     regex: /\bns\b/i,
-    response: (count) => `ns! #${count}`, // customize me
+    response: (count) => `yay x${count}`, // customize me
   },
   {
     key: 'lol',
     regex: /\blol\b/i,
-    response: (count) => `lol #${count}`, // customize me
+    response: (count) => `LOL x${count}`, // customize me
   },
 ];
 
