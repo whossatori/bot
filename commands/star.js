@@ -10,11 +10,11 @@ const MISS_MESSAGES = [
 
 export default {
   name: 'star',
-  description: '25% chance to catch a star.',
+  description: '10% chance to catch a star.',
   adminOnly: false,
 
   async execute({ channelName, senderUsername, msg, botState }) {
-    const caught = Math.random() < 0.35;
+    const caught = Math.random() < 0.10;
 
     if (!caught) {
       const missText = MISS_MESSAGES[Math.floor(Math.random() * MISS_MESSAGES.length)];
