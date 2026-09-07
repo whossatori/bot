@@ -76,16 +76,18 @@ async function getMmrByRiotId(config, region, name, tag) {
 
 // Recent match history by puuid, filtered by mode (e.g. "competitive")
 // and capped at `size` matches — used to compute win rate / headshot %
-// over a sample of games. Each match includes every player's own
-// stats (headshots/bodyshots/legshots, team, etc.), so no per-match
-// follow-up call is needed. Returns null if no data.
+// over a sample of games. v4 specifically (not v3): v3 still returns
+// Henrik's legacy shape (players.all_players as an object, "team"
+// instead of "team_id"), while v4 gives a flat players array with the
+// nested stats.headshots/bodyshots/legshots this relies on. Returns
+// null if no data.
 async function getMatchesByPuuid(config, region, puuid, { mode, size } = {}) {
   const params = new URLSearchParams();
   if (mode) params.set('mode', mode);
   if (size) params.set('size', String(size));
   const query = params.toString() ? `?${params.toString()}` : '';
 
-  const data = await henrikGet(config, `/valorant/v3/by-puuid/matches/${region}/${puuid}${query}`);
+  const data = await henrikGet(config, `/valorant/v4/by-puuid/matches/${region}/pc/${puuid}${query}`);
   return data?.data ?? null;
 }
 
