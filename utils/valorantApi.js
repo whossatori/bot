@@ -60,4 +60,33 @@ async function getMmrHistory(config, region, platform, puuid) {
   return data?.data?.history ?? null;
 }
 
-export { getAccount, getCurrentMmr, getMmrHistory };
+// Current + peak rank directly by Riot ID, no account/puuid lookup
+// needed. Unlike the by-puuid helpers above (which assume you already
+// know the account's region, e.g. from your own config), this is for
+// looking up an arbitrary player, so the caller supplies the region
+// explicitly — Henrik can't reliably guess it for an account it hasn't
+// already cached. Returns null if no such account/rank data.
+async function getMmrByRiotId(config, region, name, tag) {
+  const data = await henrikGet(
+    config,
+    `/valorant/v3/mmr/${region}/pc/${encodeURIComponent(name)}/${encodeURIComponent(tag)}`
+  );
+  return data?.data ?? null;
+}
+
+// Recent match history by puuid, filtered by mode (e.g. "competitive")
+// and capped at `size` matches — used to compute win rate / headshot %
+// over a sample of games. Each match includes every player's own
+// stats (headshots/bodyshots/legshots, team, etc.), so no per-match
+// follow-up call is needed. Returns null if no data.
+async function getMatchesByPuuid(config, region, puuid, { mode, size } = {}) {
+  const params = new URLSearchParams();
+  if (mode) params.set('mode', mode);
+  if (size) params.set('size', String(size));
+  const query = params.toString() ? `?${params.toString()}` : '';
+
+  const data = await henrikGet(config, `/valorant/v3/by-puuid/matches/${region}/${puuid}${query}`);
+  return data?.data ?? null;
+}
+
+export { getAccount, getCurrentMmr, getMmrHistory, getMmrByRiotId, getMatchesByPuuid };
