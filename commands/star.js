@@ -17,7 +17,22 @@ export default {
 
   async execute({ channelName, senderUsername, args, msg, botState }) {
     const { config } = botState;
-    const targetArg = args[0]?.replace(/^@/, '');
+    // Twitch shows a "localized display name" (used mainly for
+    // non-Latin scripts) as "username(localized)" — e.g. "ziux(لأ)".
+    // Chat's own @mention autocomplete inserts that whole string, but
+    // Helix's login lookup only accepts the actual ASCII username, so
+    // strip anything from the first "(" onward. Real Twitch logins
+    // never contain "(", so this is safe either way.
+    const rawArg = args[0]?.replace(/^@/, '').split('(')[0].trim();
+
+    // Some chat clients/extensions (7TV among them) append an invisible
+    // character to every message to dodge Twitch's duplicate-message
+    // filter — on a bare "!star" with no real argument, that phantom
+    // character can land in args[0] and survive the trim above since
+    // it isn't whitespace. Only treat it as an actual target if it
+    // looks like a real Twitch username; otherwise fall back to
+    // rolling for the sender, same as no argument at all.
+    const targetArg = rawArg && /^[a-zA-Z0-9_]+$/.test(rawArg) ? rawArg : undefined;
 
     // No argument: identical to the old behavior, no extra API call —
     // roll for whoever sent the command, using the IRC message's own

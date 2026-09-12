@@ -1,88 +1,49 @@
-import { getUserByLogin } from '../utils/twitchApi.js';
-
-// 5 separate lines so each can be edited independently — @user prefix is
-// applied automatically below, just change the text on each line.
-const MISS_MESSAGES = [
-  `no ✶✰｡`,
-  `u suck ✰⭒`,
-  `stop trying ✶.✰`,
-  `give up ✰.`,
-  `lol... ✰˚࿔`,
-];
-
 export default {
-  name: 'star',
-  description: '15% chance to catch a star. Optionally target another user: !star @user',
+  name: 'stars',
+  description: "Shows how many stars you (or someone else) have caught.",
   adminOnly: false,
 
-  async execute({ channelName, senderUsername, args, msg, botState }) {
-    const { config } = botState;
-    // Twitch shows a "localized display name" (used mainly for
-    // non-Latin scripts) as "username(localized)" — e.g. "ziux(لأ)".
-    // Chat's own @mention autocomplete inserts that whole string, but
-    // Helix's login lookup only accepts the actual ASCII username, so
-    // strip anything from the first "(" onward before querying. Real
-    // Twitch logins never contain "(", so this is safe either way.
-    const targetArg = args[0]?.replace(/^@/, '').split('(')[0].trim();
+  async execute({ args, channelName, senderUsername, msg, botState }) {
+    const targetArg = args[0]?.replace(/^@/, '');
 
-    // No argument: identical to the old behavior, no extra API call —
-    // roll for whoever sent the command, using the IRC message's own
-    // sender info (id + username) directly.
-    let targetId, targetName;
     if (!targetArg) {
-      targetId = msg.sender.id;
-      targetName = senderUsername;
-    } else {
-      // Argument given: rolling for someone else instead, so their
-      // numeric Twitch id has to be resolved via Helix first — the
-      // stars table is keyed on user_id, not username.
-      let targetUser;
-      try {
-        targetUser = await getUserByLogin(config, targetArg);
-      } catch (err) {
-        console.error('star: failed to resolve target user:', err.message);
-        await botState.client.me(channelName, `✘ cant reach twitch.`);
-        return;
-      }
+      // Self-lookup by user_id — authoritative, doesn't depend on the
+      // cached username column being up to date for the caller.
+      const row = await new Promise((resolve, reject) => {
+        botState.db.get(
+          `SELECT stars FROM stars WHERE user_id = ?`,
+          [msg.sender.id],
+          (err, row) => (err ? reject(err) : resolve(row))
+        );
+      });
 
-      if (!targetUser) {
-        await botState.client.me(channelName, `✘ no user called "${targetArg}".`);
-        return;
-      }
+      const count = row ? row.stars : 0;
+      const response =
+        count > 0
+          ? `@${senderUsername} you have ${count} star${count === 1 ? '' : 's'} ☆` // customize me
+          : `@${senderUsername} you haven't caught any stars yet ♡`; // customize me
 
-      targetId = targetUser.id;
-      targetName = targetUser.display_name;
-    }
-
-    const caught = Math.random() < 0.15;
-
-    if (!caught) {
-      const missText = MISS_MESSAGES[Math.floor(Math.random() * MISS_MESSAGES.length)];
-      const response = `@${targetName} ${missText}`;
       await botState.client.me(channelName, response);
       return;
     }
 
-    // Upsert: new user starts at 1 star, existing user gets +1. Keyed on
-    // user_id (not username) so renames don't split someone's total.
-    await new Promise((resolve, reject) => {
-      botState.db.run(
-        `INSERT INTO stars (user_id, username, stars) VALUES (?, ?, 1)
-         ON CONFLICT(user_id) DO UPDATE SET stars = stars + 1, username = excluded.username`,
-        [targetId, targetName],
-        (err) => (err ? reject(err) : resolve())
-      );
-    });
-
-    const total = await new Promise((resolve, reject) => {
+    // Looking up someone else — no Twitch API call, just matches against
+    // whatever username was last recorded the last time they caught one.
+    const row = await new Promise((resolve, reject) => {
       botState.db.get(
-        `SELECT stars FROM stars WHERE user_id = ?`,
-        [targetId],
-        (err, row) => (err ? reject(err) : resolve(row ? row.stars : 1))
+        `SELECT stars, username FROM stars WHERE LOWER(username) = LOWER(?)`,
+        [targetArg],
+        (err, row) => (err ? reject(err) : resolve(row))
       );
     });
 
-    const response = `@${targetName} caught a  ☆ u have ${total} stars ꕥ`; // customize me
+    const displayName = row ? row.username : targetArg;
+    const count = row ? row.stars : 0;
+    const response =
+      count > 0
+        ? `${displayName} has ${count} star${count === 1 ? '' : 's'} ☆` // customize me
+        : `${displayName} hasn't caught any stars yet ♡`; // customize me
+
     await botState.client.me(channelName, response);
   },
 };
