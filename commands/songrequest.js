@@ -31,6 +31,6 @@ export default {
       requestedBy: senderUsername,
     });
 
-    await botState.client.me(channelName, `🎵 requested "${query}" (by ${senderUsername})`);
+    await botState.client.me(channelName, `♪♫ requested "${query}" by ${senderUsername}`);
   },
 };
