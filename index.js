@@ -6,6 +6,7 @@ import url from 'url';
 import { loadCommands, countUniqueCommands } from './utils/commandLoader.js';
 import { isOnCooldown, setCooldown } from './utils/cooldown.js';
 import { handleTriggers } from './utils/triggers.js';
+import { startSongRequestServer } from './utils/songRequestServer.js';
 
 const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
 const config = JSON.parse(fs.readFileSync(path.join(__dirname, 'config.json'), 'utf-8'));
@@ -90,6 +91,9 @@ db.serialize(() => {
 // ─── Load Commands ────────────────────────────────────────────────
 const commands = await loadCommands(path.join(__dirname, 'commands'));
 
+// ─── Song Request Server ──────────────────────────────────────────
+const songRequests = startSongRequestServer(config);
+
 // ─── Create Twitch Client ────────────────────────────────────────
 const client = new ChatClient({
   username: config.username,
@@ -164,6 +168,7 @@ const botState = {
   client,
   commands,
   startTime,
+  songRequests,
   joinChannel,
   leaveChannel,
   getCommandsUsed: () => commandsUsed,
