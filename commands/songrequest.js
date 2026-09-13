@@ -1,5 +1,3 @@
-import { resolveTrack } from '../utils/spotifyApi.js';
-
 export default {
   name: 'songrequest',
   aliases: ['sr'],
@@ -23,30 +21,16 @@ export default {
       return;
     }
 
-    let track;
-    try {
-      track = await resolveTrack(botState.config, query);
-    } catch (err) {
-      console.error('songrequest: failed to resolve track:', err.message);
-      await botState.client.me(channelName, `✘ couldn't reach Spotify right now.`);
-      return;
-    }
-
-    if (!track) {
-      await botState.client.me(channelName, `✘ no match for "${query}".`);
-      return;
-    }
-
+    // Resolution (search/link parsing) happens on the extension side now —
+    // see satos-song-request.js — so this just forwards the raw text and
+    // the extension reports back visually (on-screen notification) once
+    // it knows what actually got queued.
     botState.songRequests.broadcast({
       type: 'request',
-      uri: track.uri,
-      label: track.label,
+      query,
       requestedBy: senderUsername,
     });
 
-    await botState.client.me(
-      channelName,
-      `🎵 queued: ${track.label ?? query} (requested by ${senderUsername})`
-    );
+    await botState.client.me(channelName, `🎵 requested "${query}" (by ${senderUsername})`);
   },
 };
