@@ -21,16 +21,30 @@ export default {
       return;
     }
 
-    // Resolution (search/link parsing) happens on the extension side now —
-    // see satos-song-request.js — so this just forwards the raw text and
-    // the extension reports back visually (on-screen notification) once
-    // it knows what actually got queued.
-    botState.songRequests.broadcast({
+    const result = await botState.songRequests.requestAndWait({
       type: 'request',
       query,
       requestedBy: senderUsername,
     });
 
-    await botState.client.me(channelName, `♪♫ requested "${query}" by ${senderUsername}`);
+    if (!result) {
+      // Sent, but no reply came back in time — still tell them it went
+      // out rather than leaving them wondering.
+      await botState.client.me(channelName, `♪♫ "${query}" requested by ${senderUsername}`);
+      return;
+    }
+
+    if (!result.success) {
+      await botState.client.me(
+        channelName,
+        `✘ ${result.error || `couldn't queue "${query}"`} (requested by ${senderUsername})`
+      );
+      return;
+    }
+
+    await botState.client.me(
+      channelName,
+      `♪♫ ${result.label ?? query} added to queue by ${senderUsername}`
+    );
   },
 };
