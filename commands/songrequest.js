@@ -37,10 +37,10 @@ export default {
     if (!result.success) {
       await botState.client.me(
         channelName,
-        `✘ ${result.error || `couldn't queue "${query}"`} (requested by ${senderUsername})`
+        `✘ ${result.error || `couldn't queue "${query}"`}`
       );
       return;
-    }
+    }s
 
     await botState.client.me(
       channelName,
