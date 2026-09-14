@@ -40,7 +40,7 @@ export default {
         `✘ ${result.error || `couldn't queue "${query}"`}`
       );
       return;
-    }s
+    }
 
     await botState.client.me(
       channelName,
