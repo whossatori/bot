@@ -213,6 +213,16 @@ client.on('PRIVMSG', async (msg) => {
     return;
   }
 
+  // Twitch's own moderator flag on the message, parsed by dank-twitch-irc
+  // — the admin always counts too, same as adminOnly commands above.
+  if (
+    command.modOnly &&
+    !msg.isMod &&
+    msg.senderUsername.toLowerCase() !== config.admin.toLowerCase()
+  ) {
+    return;
+  }
+
   if (isOnCooldown(command.name, msg.senderUsername)) {
     return;
   }

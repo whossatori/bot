@@ -1,6 +1,7 @@
 export default {
   name: 'queue',
-  description: 'Shows the next 5 songs in the queue.',
+  aliases: ['q'],
+  description: 'Shows the next 3 songs in the queue.',
   adminOnly: false,
 
   async execute({ channelName, botState }) {

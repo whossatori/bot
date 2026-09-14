@@ -1,7 +1,7 @@
 export default {
   name: 'skip',
-  description: 'Skips the current song. (Admin only)',
-  adminOnly: true,
+  description: 'Skips the current song. (Mods only)',
+  modOnly: true,
 
   async execute({ channelName, senderUsername, botState }) {
     if (!botState.songRequests.hasConnectedClients()) {
