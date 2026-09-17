@@ -94,6 +94,14 @@ async function getLatestVod(config, userId) {
   return data.data[0] ?? null;
 }
 
+// Channel info — game_name here is whatever the channel is set to,
+// which for an offline channel is the last thing they streamed. Used
+// by the raid shoutout.
+async function getChannelInfo(config, broadcasterId) {
+  const data = await helixGet(config, 'channels', { broadcaster_id: broadcasterId });
+  return data.data[0] ?? null;
+}
+
 async function getIvrUser(userId) {
   const res = await fetch(`https://api.ivr.fi/v2/twitch/user?id=${encodeURIComponent(userId)}`);
   if (!res.ok) return null;
@@ -101,4 +109,4 @@ async function getIvrUser(userId) {
   return data[0] ?? null;
 }
 
-export { getUserByLogin, getStreamByUserId, getLatestVod, getIvrUser };
+export { getUserByLogin, getStreamByUserId, getLatestVod, getChannelInfo, getIvrUser };

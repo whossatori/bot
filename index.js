@@ -7,6 +7,8 @@ import { loadCommands, countUniqueCommands } from './utils/commandLoader.js';
 import { isOnCooldown, setCooldown } from './utils/cooldown.js';
 import { handleTriggers } from './utils/triggers.js';
 import { startSongRequestServer } from './utils/songRequestServer.js';
+import { handleRaid } from './utils/raid.js';
+import { claimDaily } from './utils/daily.js';
 
 const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
 const config = JSON.parse(fs.readFileSync(path.join(__dirname, 'config.json'), 'utf-8'));
@@ -62,6 +64,16 @@ db.serialize(() => {
     username TEXT,
     stream_key TEXT NOT NULL,
     used INTEGER NOT NULL DEFAULT 0
+  )`);
+
+  // Daily channel point claims — total is the lifetime count, and
+  // stream_key records which stream they last claimed on so it can
+  // only be claimed once per stream.
+  db.run(`CREATE TABLE IF NOT EXISTS daily_claims (
+    user_id TEXT PRIMARY KEY,
+    username TEXT,
+    stream_key TEXT NOT NULL,
+    total INTEGER NOT NULL DEFAULT 0
   )`);
 
   db.run(
@@ -208,13 +220,13 @@ client.on('PRIVMSG', async (msg) => {
     console.error('Error handling keyword triggers:', err);
   }
 
-  // Channel point redemptions of the song request reward arrive as a
-  // normal chat message carrying a custom-reward-id tag, with the
-  // viewer's typed text as the whole message — no command prefix — so
-  // they're routed here rather than by the prefix check below. Only
-  // works for rewards with "require viewer to enter text" enabled;
-  // rewards without text input never reach IRC at all.
+  // Channel point redemptions arrive as a normal chat message carrying
+  // a custom-reward-id tag, with the viewer's typed text as the whole
+  // message — no command prefix — so they're routed here rather than by
+  // the prefix check below. Only works for rewards with "require viewer
+  // to enter text" enabled; rewards without text input never reach IRC.
   const rewardId = msg.ircTags?.['custom-reward-id'];
+
   if (rewardId && config.songRequestRewardId && rewardId === config.songRequestRewardId) {
     const srCommand = commands.get('songrequest');
     if (srCommand) {
@@ -233,6 +245,22 @@ client.on('PRIVMSG', async (msg) => {
       } catch (err) {
         console.error('Error executing redeemed song request:', err);
       }
+    }
+    return;
+  }
+
+  if (rewardId && config.dailyRewardId && rewardId === config.dailyRewardId) {
+    try {
+      const { claimed, total } = await claimDaily(botState, msg, msg.channelName);
+
+      await client.me(
+        msg.channelName,
+        claimed
+          ? `${msg.senderUsername} has caught a ✰ they've caught ${total} ♡`
+          : `${msg.senderUsername} you've already caught your ✰ this stream ♡`
+      );
+    } catch (err) {
+      console.error('Error handling daily redeem:', err);
     }
     return;
   }
@@ -286,6 +314,17 @@ client.on('PRIVMSG', async (msg) => {
 });
 
 // ─── Client Events ───────────────────────────────────────────────
+client.on('USERNOTICE', async (msg) => {
+  if (typeof msg.isRaid === 'function' && !msg.isRaid()) return;
+  if (typeof msg.isRaid !== 'function' && msg.messageTypeID !== 'raid') return;
+
+  try {
+    await handleRaid({ msg, botState });
+  } catch (err) {
+    console.error('Error handling raid:', err);
+  }
+});
+
 client.on('ready', () => {
   console.log(`✅ Bot connected as: ${config.username}`);
   console.log(`📢 Prefix: ${currentPrefix}`);
