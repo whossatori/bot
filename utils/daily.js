@@ -7,7 +7,7 @@
 // "offline") to decide what "this stream" means — same mechanism that
 // resets free song requests.
 
-import { getStreamKey } from './songLimits.js';
+import { getStreamKey } from './streamSession.js';
 
 // { claimed: true, total } on a fresh claim, { claimed: false, total }
 // if they already claimed this stream. Twitch's own reward setting

@@ -6,43 +6,16 @@
 // (see the custom-reward-id routing in index.js), which never counts
 // against the free allowance.
 //
-// "Per stream" is keyed on the stream's started_at timestamp from
-// Helix — a new stream means a new key, which resets everyone's count
-// automatically without needing to detect the exact moment a stream
-// ends. While offline, the key is the literal string "offline", so the
-// same allowance applies off-stream and resets when you next go live.
-
-import { getUserByLogin, getStreamByUserId } from './twitchApi.js';
+// "Per stream" comes from utils/streamSession.js's getStreamKey — this
+// file only handles the limit/usage side, nothing stream-session
+// related lives here anymore.
 
 const DEFAULT_FREE_LIMIT = 5;
-const STREAM_CACHE_MS = 60_000; // don't hit Helix on every single request
-
-const streamCache = new Map(); // channel -> { key, checkedAt }
 
 function getFreeLimit(config) {
   return Number.isInteger(config.songRequestFreeLimit)
     ? config.songRequestFreeLimit
     : DEFAULT_FREE_LIMIT;
-}
-
-// Identifies the current stream session. Falls back to the last known
-// key on an API failure rather than wrongly resetting everyone's count.
-async function getStreamKey(config, channelName) {
-  const cached = streamCache.get(channelName);
-  if (cached && Date.now() - cached.checkedAt < STREAM_CACHE_MS) {
-    return cached.key;
-  }
-
-  try {
-    const user = await getUserByLogin(config, channelName);
-    const stream = user ? await getStreamByUserId(config, user.id) : null;
-    const key = stream?.started_at ?? 'offline';
-    streamCache.set(channelName, { key, checkedAt: Date.now() });
-    return key;
-  } catch (err) {
-    console.error('songLimits: failed to check stream status:', err.message);
-    return cached?.key ?? 'offline';
-  }
 }
 
 // Mods, VIPs, the broadcaster and the admin bypass the limit.
@@ -95,4 +68,4 @@ function consume(db, userId, username, streamKey) {
   });
 }
 
-export { getFreeLimit, getStreamKey, isPrivileged, getRemaining, consume };
+export { getFreeLimit, isPrivileged, getRemaining, consume };

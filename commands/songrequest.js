@@ -1,6 +1,6 @@
+import { getStreamKey } from '../utils/streamSession.js';
 import {
   getFreeLimit,
-  getStreamKey,
   isPrivileged,
   getRemaining,
   consume,
@@ -54,7 +54,7 @@ export default {
       if (remaining <= 0) {
         await botState.client.me(
           channelName,
-          `@${senderUsername} all free song requests used♪`
+          `@${senderUsername} you've used all ${limit} of your free song requests this stream — redeem more with channel points ♪`
         );
         return;
       }
