@@ -54,6 +54,16 @@ db.serialize(() => {
     value TEXT
   )`);
 
+  // Per-user free song request counts, scoped to a stream session.
+  // stream_key is the stream's started_at (or "offline") — see
+  // utils/songLimits.js for how that resets counts automatically.
+  db.run(`CREATE TABLE IF NOT EXISTS song_request_usage (
+    user_id TEXT PRIMARY KEY,
+    username TEXT,
+    stream_key TEXT NOT NULL,
+    used INTEGER NOT NULL DEFAULT 0
+  )`);
+
   db.run(
     `INSERT OR IGNORE INTO stats (key, value) VALUES ('commands_used', 0)`
   );
@@ -196,6 +206,35 @@ client.on('PRIVMSG', async (msg) => {
     await handleTriggers({ text, channelName: msg.channelName, botState });
   } catch (err) {
     console.error('Error handling keyword triggers:', err);
+  }
+
+  // Channel point redemptions of the song request reward arrive as a
+  // normal chat message carrying a custom-reward-id tag, with the
+  // viewer's typed text as the whole message — no command prefix — so
+  // they're routed here rather than by the prefix check below. Only
+  // works for rewards with "require viewer to enter text" enabled;
+  // rewards without text input never reach IRC at all.
+  const rewardId = msg.ircTags?.['custom-reward-id'];
+  if (rewardId && config.songRequestRewardId && rewardId === config.songRequestRewardId) {
+    const srCommand = commands.get('songrequest');
+    if (srCommand) {
+      commandsUsed++;
+      db.run(`UPDATE stats SET value = value + 1 WHERE key = 'commands_used'`);
+
+      try {
+        await srCommand.execute({
+          msg,
+          channelName: msg.channelName,
+          senderUsername: msg.senderUsername,
+          args: text.trim().split(/\s+/),
+          botState,
+          isRedeem: true,
+        });
+      } catch (err) {
+        console.error('Error executing redeemed song request:', err);
+      }
+    }
+    return;
   }
 
   if (!text.startsWith(currentPrefix)) return;
