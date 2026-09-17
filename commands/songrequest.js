@@ -39,11 +39,11 @@ export default {
     const limited = !isRedeem && !isPrivileged(msg, config);
     const limit = getFreeLimit(config);
     let streamKey;
+    let remaining;
 
     if (limited) {
       streamKey = await getStreamKey(config, channelName);
 
-      let remaining;
       try {
         remaining = await getRemaining(botState.db, msg.senderUserID, streamKey, limit);
       } catch (err) {
@@ -54,7 +54,7 @@ export default {
       if (remaining <= 0) {
         await botState.client.me(
           channelName,
-          `@${senderUsername} all free song requests used ♪`
+          `@${senderUsername} all free song requests used♪`
         );
         return;
       }
@@ -89,9 +89,13 @@ export default {
       }
     }
 
+    // Only limited users see the count — mods/VIPs/redeems get the
+    // plain message, since they have no allowance to report.
+    const left = limited ? ` (${Math.max(0, remaining - 1)})` : '';
+
     await botState.client.me(
       channelName,
-      `♪♫ ${result.label ?? query} added to queue by ${senderUsername}`
+      `♪♫ ${result.label ?? query} added to queue by ${senderUsername}${left}`
     );
   },
 };
