@@ -9,6 +9,8 @@ import { handleTriggers } from './utils/triggers.js';
 import { startSongRequestServer } from './utils/songRequestServer.js';
 import { handleRaid } from './utils/raid.js';
 import { claimDaily } from './utils/daily.js';
+import { startEventSub } from './utils/eventSub.js';
+import { getUserByLogin } from './utils/twitchApi.js';
 
 const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
 const config = JSON.parse(fs.readFileSync(path.join(__dirname, 'config.json'), 'utf-8'));
@@ -202,6 +204,40 @@ const botState = {
   },
 };
 
+// ─── EventSub (channel point redemptions without text input) ──────
+// Only set up if a daily reward is actually configured — this is the
+// only thing currently using EventSub.
+if (config.dailyRewardId) {
+  try {
+    const broadcaster = await getUserByLogin(config, config.channels[0]);
+    if (!broadcaster) {
+      console.error('EventSub: could not resolve broadcaster user id, skipping setup');
+    } else {
+      await startEventSub(config, broadcaster.id, async (event) => {
+        try {
+          const { claimed, total } = await claimDaily(
+            botState,
+            event.userId,
+            event.userName,
+            config.channels[0]
+          );
+
+          await client.me(
+            config.channels[0],
+            claimed
+              ? `${event.userName} has caught a ✰ they've caught ${total} ♡`
+              : `${event.userName} you've already caught your ✰ this stream ♡`
+          );
+        } catch (err) {
+          console.error('Error handling daily redemption:', err);
+        }
+      });
+    }
+  } catch (err) {
+    console.error('EventSub: failed to start:', err.message);
+  }
+}
+
 // ─── Message Handler ─────────────────────────────────────────────
 client.on('PRIVMSG', async (msg) => {
   // dank-twitch-irc's echo-message capability means the bot receives its
@@ -225,6 +261,8 @@ client.on('PRIVMSG', async (msg) => {
   // message — no command prefix — so they're routed here rather than by
   // the prefix check below. Only works for rewards with "require viewer
   // to enter text" enabled; rewards without text input never reach IRC.
+  // The daily reward deliberately has no text input, so it isn't routed
+  // here at all — see utils/eventSub.js for how it's actually handled.
   const rewardId = msg.ircTags?.['custom-reward-id'];
 
   if (rewardId && config.songRequestRewardId && rewardId === config.songRequestRewardId) {
@@ -245,22 +283,6 @@ client.on('PRIVMSG', async (msg) => {
       } catch (err) {
         console.error('Error executing redeemed song request:', err);
       }
-    }
-    return;
-  }
-
-  if (rewardId && config.dailyRewardId && rewardId === config.dailyRewardId) {
-    try {
-      const { claimed, total } = await claimDaily(botState, msg, msg.channelName);
-
-      await client.me(
-        msg.channelName,
-        claimed
-          ? `${msg.senderUsername} has caught a ✰ they've caught ${total} ♡`
-          : `${msg.senderUsername} you've already caught your ✰ this stream ♡`
-      );
-    } catch (err) {
-      console.error('Error handling daily redeem:', err);
     }
     return;
   }

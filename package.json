@@ -15,6 +15,9 @@
     "dank-twitch-irc": "npm:@mastondzn/dank-twitch-irc@^8.0.0",
     "humanize-duration": "^3.34.0",
     "sqlite3": "^5.1.6",
-    "ws": "^8.18.0"
+    "ws": "^8.18.0",
+    "@twurple/auth": "^7.4.0",
+    "@twurple/api": "^7.4.0",
+    "@twurple/eventsub-ws": "^7.4.0"
   }
 }

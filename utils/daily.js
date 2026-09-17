@@ -1,11 +1,12 @@
 // ─── Daily Claim ───────────────────────────────────────────────────
 // Backs the "daily" channel point reward: a per-user counter that can
 // only go up once per stream, so the total doubles as a rough measure
-// of how many streams someone has shown up for.
+// of how many streams someone has shown up for. Arrives via EventSub
+// (see utils/eventSub.js), not IRC, so this takes plain userId/
+// username rather than an IRC message object.
 //
-// Reuses songLimits' stream key (the stream's Helix started_at, or
-// "offline") to decide what "this stream" means — same mechanism that
-// resets free song requests.
+// Reuses streamSession's getStreamKey to decide what "this stream"
+// means — same mechanism that resets free song requests.
 
 import { getStreamKey } from './streamSession.js';
 
@@ -14,11 +15,9 @@ import { getStreamKey } from './streamSession.js';
 // ("limit redemptions per user per stream") should normally stop a
 // second redeem ever reaching this — the check here is a safety net
 // in case that setting isn't enabled.
-async function claimDaily(botState, msg, channelName) {
+async function claimDaily(botState, userId, username, channelName) {
   const { config, db } = botState;
   const streamKey = await getStreamKey(config, channelName);
-  const userId = msg.senderUserID;
-  const username = msg.senderUsername;
 
   const row = await new Promise((resolve, reject) => {
     db.get(
